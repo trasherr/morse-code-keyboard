@@ -1,0 +1,201 @@
+// C++ code
+#define Pin_Button 2
+#define Pin_Buzzer 8
+#define Morse_Code_Size 6
+#define Morse_Code_Array_Size 56
+
+int key_duration = 0;
+int delay_count = 0;
+int key_stack[Morse_Code_Size+1] = {0};
+char key_array[Morse_Code_Array_Size][7] = {
+".-",
+"-...",
+"-.-.",
+"-..",
+".",
+"..-.",
+"--.",
+"....",
+"..",
+".---",
+"-.-",
+".-..",
+"--",
+"-.",
+"---",
+".--.",
+"--.-",
+".-.",
+"...",
+"-",
+"..-",
+"...-",
+".--",
+"-..-",
+"-.--",
+"--..",
+"-----",
+".----",
+"..---",
+"...--",
+"....-",
+".....",
+"-....",
+"--...",
+"---..",
+"----.",
+"......",
+".....-",
+"-.....",
+".-...."
+"..-...",
+"...-..",
+".-.-..",
+"-...-",
+"....-.",
+"--....",
+".--...",
+"______",
+"..--..",
+"...--.",
+"....--",
+"---...",
+".---..",
+"..---.",
+"...---",
+"----.."
+
+};
+
+uint8_t buf[8] = {0};
+
+void setup()
+{
+  Serial.begin(9600);
+  pinMode(Pin_Buzzer,OUTPUT);
+  pinMode(Pin_Button,INPUT);
+
+}
+
+void buzzerBeep(int beep_delay = 1 ){
+  for(int i=0;i<25;i++){
+      digitalWrite(Pin_Buzzer,HIGH);
+      delay(beep_delay);//wait for 2ms
+      digitalWrite(Pin_Buzzer,LOW);
+      delay(beep_delay);//wait for 2ms
+    }
+}
+
+
+void loop()
+{
+ 
+  if(digitalRead(Pin_Button) == HIGH){
+    key_duration += 1;
+  }
+
+  if(delay_count >= 1000){
+    if(key_duration == 0) {
+        push(0);
+    }
+    else if(key_duration < 25){
+      push(1);
+      buzzerBeep(2);
+    }
+    else {
+      push(2);
+      buzzerBeep(5);
+    }
+    key_duration = 0;
+    delay_count = 0; 
+  }
+  delay_count += 10;
+  delay(10);
+}
+
+
+void push(int beep){
+
+  int i = 0;
+  if(beep == 0){
+    applyStack();
+  }
+
+  for(i = 0;  i < Morse_Code_Size+1 ; i++ ) {
+    if(key_stack[i] == 0){ key_stack[i] = beep; break;}
+  }
+  if(i == Morse_Code_Size+1) clearStack();
+}
+
+void releaseKey() {
+  // buf[0] = 0;
+  buf[2] = 0;
+  Serial.write(buf,8);
+  // Serial.println(" --- release --- ");
+
+  // Serial.print(buf[0]);
+  // Serial.print("  ");
+
+  // Serial.print(buf[2]);
+  // Serial.println(" ------ ");
+}
+
+void pressKey(int key){
+  buf[2] = key;
+  Serial.write(buf,8);
+  // Serial.println(" --- press key --- ");
+
+  //   Serial.print(buf[0]);
+  // Serial.print("  ");
+
+  // Serial.print(buf[2]);
+  // Serial.println(" ------ ");
+}
+
+void clearStack() {
+  for(int i = 0 ; i < Morse_Code_Size+1; i++) key_stack[i] = 0; 
+} 
+
+
+void applyStack(){
+
+  int i = 0;
+  char coded_input[7];
+  int code_len = 0;
+  for(i = 0; i < Morse_Code_Size+1; i++){
+
+    if(key_stack[i] == 0){
+      coded_input[i] = '\0'; break;
+      break;
+    }
+    else if(key_stack[i] == 1) coded_input[i] = '.';
+    else if(key_stack[i] == 2) coded_input[i] = '-';
+    code_len++;
+  }
+
+  if (code_len ==0) return ;
+  i = 0;
+  while(i < Morse_Code_Array_Size){
+    // if(i == Morse_Code_Array_Size) break;
+
+    if(strcmp(coded_input,key_array[i]) == 0) {
+
+      if(i == Morse_Code_Array_Size-2){
+
+        if(buf[0] == 0) buf[0] = 2;
+        else buf[0] = 0;
+      }
+      else{
+        pressKey(i+4);
+        releaseKey();
+      }
+      break;
+
+    }
+
+    i++;
+  }
+  clearStack();
+}
+
+
